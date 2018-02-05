@@ -1,2 +1,3 @@
-# cs7015-deeplearning
-CS7015 (Deep Learning) at IIT Madras
+# IITM CS7015 (Deep Learning)
+
+Feedforward Neural Network with Backprop, Optimizers (vanilla SGD, NAG, Momentum, Adam)
