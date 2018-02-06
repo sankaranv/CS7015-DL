@@ -71,25 +71,6 @@ if (len(args.sizes) != args.num_hidden):
 else:
     sizes = map(int, args.sizes)
     num_hidden = args.num_hidden
-    L = args.num_hidden
 
 momentum = args.momentum
 anneal = args.anneal
-
-# Define weights and biases
-
-W = {}
-b = {}
-W['W0'] = np.random.uniform(size = (784, sizes[0]))
-b['b0'] = np.random.uniform(size = (784, 1))
-print W['W0'].shape
-print b['b0'].shape
-for i in range (1,L):
-    W['W{0}'.format(i)] = np.random.uniform(size = (sizes[i-1], sizes[i]))
-    b['b{0}'.format(i)] = np.random.uniform(size = (sizes[i-1], 1))
-    print W['W{0}'.format(i)].shape
-    print b['b{0}'.format(i)].shape
-W['W{0}'.format(L)] = np.random.uniform(size = (sizes[L-1], 10))
-b['b{0}'.format(L)] = np.random.uniform(size = (sizes[L-1], 1))
-print W['W{0}'.format(L)].shape
-print b['b{0}'.format(L)].shape
