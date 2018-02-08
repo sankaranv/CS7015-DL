@@ -61,3 +61,17 @@ def nesterov_accelerated_gradient_descent(lr, momentum):
         update = momentum * prev_update + lr * grad_params
         params = params - update
         prev_update = update
+
+def adam_optimizer(beta_1=0.9, beta_2=0.999, lr, epsilon=1e-9):
+    i = 0
+    max_iter = 1000
+    prev_momentum = np.zeros(shape=params.shape)
+    prev_velocity = np.zeros(shape=params.shape)
+    while (i <= max_iter):
+        y_pred, loss = forward(x, y)
+        grad_params = backward(y_true, y_pred)
+        momentum = beta1*prev_momentum + (1-beta1)*grad_params
+        velocity = beta2*prev_velocity + (1-beta2)*np.square(grad_params)
+        momentum = momentum / (1 - np.power(beta1,(i+1)))
+        velocity = (velocity / (1 - np.power(beta2,(i+1)))) + epsilon
+        params = params - np.multiply((lr / np.power(velocity,0.5)), momentum)
