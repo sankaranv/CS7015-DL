@@ -8,6 +8,15 @@ def activation_function(x, activation=activation):
     else:
         return x
 
+def grad_activation_function(x, activation=activation):
+    a = activation_function(x, activation=activation)
+    if (activation == 'sigmoid'):
+        return a*(1-a)
+    elif (activation == 'tanh'):
+        return 1-(a**2)
+    else:
+        return 1.
+
 def output_function(x, activation='softmax'):
     if (activation == 'softmax'):
         x = np.exp(x - np.max(x))  # Normalization for numerical stability, from CS231n notes
@@ -68,7 +77,7 @@ class Network:
             # Gradients wrt prev layer
             grad_h['h{}'.format(k-1)] = mp.matmul(self.W['W{}'.format(k)].T, grad_a['a{}'.format(k)])
             # Gradients wrt prev preactivation
-            grad_a['a{}'.format(k-1)] = np.multiply(grad_h['h{}'.format(k-1)], activation_function(a['a{}'.format(k-1)], self.activation))
+            grad_a['a{}'.format(k-1)] = np.multiply(grad_h['h{}'.format(k-1)], grad_activation_function(a['a{}'.format(k-1)], self.activation))
         return grad_a, grad_W, grad_b, grad_h
 
     def train():
