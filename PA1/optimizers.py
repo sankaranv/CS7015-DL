@@ -73,5 +73,5 @@ def adam_optimizer(beta_1=0.9, beta_2=0.999, lr, epsilon=1e-9):
         momentum = beta1*prev_momentum + (1-beta1)*grad_params
         velocity = beta2*prev_velocity + (1-beta2)*np.square(grad_params)
         momentum = momentum / (1 - np.power(beta1,(i+1)))
-        velocity = (velocity / (1 - np.power(beta2,(i+1)))) + epsilon
-        params = params - np.multiply((lr / np.power(velocity,0.5)), momentum)
+        velocity = velocity / (1 - np.power(beta2,(i+1)))
+        params = params - np.multiply((lr / np.power(velocity+epsilon,0.5)), momentum)
