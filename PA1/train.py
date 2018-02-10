@@ -1,7 +1,15 @@
-import numpy as np
-import pandas as pd
-import argparse
+# System libraries
 import sys
+import os
+import argparse
+import logging
+import numpy as np
+
+# Custom imports
+from helpers import setup_logger
+from network import Network
+from optimizers import gradient_descent
+from data import loadData
 
 # Parse Arguments
 
@@ -31,6 +39,8 @@ parser.add_argument('--expt_dir', default='./logs',
                     help='save dir for experiment logs')
 parser.add_argument('--train', default='./data',
                     help='path to training set')
+parser.add_argument('--val', default='./data',
+                    help='path to validation set')
 parser.add_argument('--test', default='./data',
                     help='path to test set')
 args = parser.parse_args()
@@ -71,6 +81,58 @@ if (len(args.sizes) != args.num_hidden):
 else:
     sizes = map(int, args.sizes)
     num_hidden = args.num_hidden
+    L = args.num_hidden
 
 momentum = args.momentum
-anneal = args.anneal
+anneal = True
+# Paths
+train_path, valid_path, test_path = args.train, args.val, args.test
+model_path = args.save_dir
+logs_path = args.expt_dir
+
+# Logging
+train_log = setup_logger('train-log', os.path.join(logs_path, 'train.log'))
+valid_log = setup_logger('valid-log', os.path.join(logs_path, 'valid.log'))
+# Load data
+data = loadData(train_path, valid_path, test_path)
+train_X, train_Y, valid_X, valid_Y, test_X, test_Y = data['train']['X'], data['train']['Y'],\
+                                                     data['valid']['X'], data['valid']['Y'],\
+                                                     data['test']['X'], data['test']['Y'], 
+
+# Initialize network
+np.random.seed(1234)
+network = Network(num_hidden, sizes, activation_choice = activation, output_choice = 'softmax', loss_choice = loss)
+model_name = '{}-{}-{}-{}-{}-{}.npy'.format(num_hidden, ','.join([str(word) for word in sizes]), activation, 'softmax', loss, lr)
+# Train
+num_epochs = 100
+num_batches = int(float(train_X.shape[0]) / batch_size)
+steps = 0
+latency = 25
+loss_history = [np.inf]
+for epoch in range(num_epochs):
+    steps = 0
+    for batch in range(num_batches):
+        start, end = batch * batch_size, (batch + 1) * batch_size
+        x, y = train_X[:, range(start, end)], train_Y[range(start, end)]
+        gradient_descent(network, x, y, lr)
+        steps += batch_size
+        if steps % 100 == 0 and steps != 0:
+            y_pred, loss = network.forward(train_X, train_Y)
+            error = network.performance(train_Y, y_pred)
+            train_log.info('Epoch {}, Step {}, Loss: {}, Error: {}, lr: {}'.format(epoch, steps, loss, error, lr))
+            y_pred, loss = network.forward(valid_X, valid_Y)
+            error = network.performance(valid_Y, y_pred)
+            valid_log.info('Epoch {}, Step {}, Loss: {}, Error: {}, lr: {}'.format(epoch, steps, loss, error, lr))
+            if loss < min(loss_history):
+                network.save(os.path.join(model_path, model_name))    
+            loss_history.append(loss)
+            latency -= 1
+            print anneal, len(loss_history) - np.argmin(loss_history)
+            if anneal == True and len(loss_history) - np.argmin(loss_history) > 10 and latency < 0:
+                network.load(os.path.join(model_path, model_name))
+                lr /= 2
+                latency = 25
+            if lr <= 1e-4:
+                print 'Training ended'
+                exit()
+
