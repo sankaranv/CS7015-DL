@@ -114,7 +114,8 @@ for epoch in range(num_epochs):
     for batch in range(num_batches):
         start, end = batch * batch_size, (batch + 1) * batch_size
         x, y = train_X[:, range(start, end)], train_Y[range(start, end)]
-        gradient_descent(network, x, y, lr)
+        #gradient_descent(network, x, y, lr)
+        grad_check(network, x, y, lr)
         steps += batch_size
         if steps % 100 == 0 and steps != 0:
             y_pred, loss = network.forward(train_X, train_Y)
