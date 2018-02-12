@@ -7,6 +7,7 @@ class Network:
         # L hidden layers, layer 0 is input, layer (L+1) is output
         sizes = [784] + sizes + [10]
         self.L = num_hidden
+        self.sizes = sizes
         self.output_shape = 10
         # Parameter map from theta to Ws and bs
         self.param_map = {}
