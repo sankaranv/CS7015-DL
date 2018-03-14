@@ -102,5 +102,7 @@ class CNN:
 
     def step(self, batch_x, batch_y):
         sess.run(train_op, feed_dict={x: batch_x, y: batch_y})
-        loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x, Y: batch_y)
+
+    def performance(self, batch_x, batch_y):
+        loss, acc = sess.run([loss_op, accuracy], feed_dict={x: batch_x, y: batch_y)
         return loss, acc
