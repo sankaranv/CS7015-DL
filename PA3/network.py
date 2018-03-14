@@ -15,12 +15,13 @@ def dense(x, W, b):
     fc = tf.add(tf.matmul(fc, W), b)
     return tf.nn.relu(fc)
 
-class Network:
+class CNN:
 
-    def __init__(self, conv_sizes, dense_sizes, num_out, initializer='xavier', arch, lr):
+    def __init__(self, conv_sizes, dense_sizes, num_out, arch, session, initializer='xavier', lr = 0.001):
         self.params = {}
         self.layers = {}
         self.arch = arch
+        self.lr = lr
         # Initializers
         if initializer='he':
             init = tf.contrib.layers.variance_scaling_initializer()
@@ -42,55 +43,68 @@ class Network:
         self.params['Wout'] = tf.get_variable(name = 'Wout', shape = [num_out,dense_sizes[-1]], initializer = init)
         self.params['bout'] = tf.get_variable(name = 'bout', shape = [num_out,1], initializer = init)
 
-    def model(self, x):
+        # Build the TensorFlow graph
+        self.sess = session
+        self.build_graph()
+
+    def build_graph(self):
+        x = tf.placeholder(tf.float32, shape=[None, 784], name='input_data')
+        y = tf.placeholder(tf.float32, shape=[None, 10], name='input_labels')
         x = tf.reshape(x, shape=[-1, 28, 28, 1])
-        c_conv = 0
-        c_dense = 0
-        c_pool = 0
+        c_conv = 1
+        c_dense = 1
+        c_pool = 1
+
         for i in range(len(arch)):
+            prev_layer_idx = ''
+
             if self.arch[i]=='conv':
                 weight = 'Wc{}'.format(c_conv)
                 bias = 'bc{}'.format(c_conv)
-                layer = 'conv{}'.format(c_conv)
-                x = conv2d(x, self.params[weight], self.params[bias])
-                self.layers[layer] = x
+                layer_idx = 'conv{}'.format(c_conv)
+                if i == 0:
+                    self.layers[layer_idx] = conv2d(x, self.params[weight], self.params[bias])
+                else
+                    self.layers[layer_idx] = conv2d(self.layers[prev_layer_idx], self.params[weight], self.params[bias])
                 c_conv += 1
+                prev_layer_idx = layer_idx
+
             elif self.arch[i]=='pool':
-                layer = 'pool{}'.format(c_pool)
-                x = pool2d(x)
-                self.layers[layer] = x
+                layer_idx = 'pool{}'.format(c_pool)
+                self.layers[layer_idx] = pool2d(self.layers[prev_layer_idx])
                 c_pool += 1
+                prev_layer_idx = layer_idx
+
             elif self.arch[i]=='dense':
                 weight = 'Wd{}'.format(c_dense)
                 bias = 'bd{}'.format(c_dense)
-                layer = 'fc{}'.format(c_pool)
-                x = dense(x, self.params[weight], self.params[bias])
-                self.layers[layer] = x
+                layer_idx = 'fc{}'.format(c_pool)
+                self.layers[layer_idx] = dense(self.layers[prev_layer_idx], self.params[weight], self.params[bias])
                 c_dense += 1
+
             elif self.arch[i]=='out':
                 logits = tf.add(tf.matmul(x, self.params['Wout']), self.params['bout'])
                 self.layers['out'] = logits
-                return self.layers['out']
+                y_pred =  tf.nn.softmax(logits)
+                loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
+
             else:
                 print "Invalid architecture!"
                 sys.exit(1)
 
-    def predict(self,x,y,lr):
-        logits = model(x)
-        y_pred =  tf.nn.softmax(logits)
-        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=Y))
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
         train_op = optimizer.minimize(loss)
         correct_pred = tf.equal(tf.argmax(y_pred, 1), tf.argmax(y, 1))
         accuracy = tf.reduce_mean(correct_pred)
-
-    def train():
         init = tf.global_variables_initializer()
-        with tf.Session() as sess:
-            sess.run(init)
-            for epoch in range(num_epochs):
-                steps = 0
-                for batch in range(num_batches):
-                 #batch_x, batch_y
-                 sess.run(train_op, feed_dict={x: batch_x, y: batch_y})
-                 loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x, Y: batch_y)
+        self.sess.run(init)
+
+    def step(self, batch_x, batch_y):
+        sess.run(train_op, feed_dict={x: batch_x, y: batch_y})
+        loss, acc = sess.run([loss_op, accuracy], feed_dict={X: batch_x, Y: batch_y)
+
+    def load_data(self):
+
+    def train(self):
+        
