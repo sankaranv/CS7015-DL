@@ -98,8 +98,8 @@ train_X, train_Y, valid_X, valid_Y, test_X, test_Y = data['train']['X'], data['t
 # Initialize network
 np.random.seed(1234)
 network = Network(num_hidden, sizes, activation_choice = activation, output_choice = 'softmax', loss_choice = loss)
-model_name = '{}-{}-{}-{}-{}-{}-{}.npy'.format(num_hidden, ','.join([str(word) for word in sizes]), activation, 'softmax', loss, opt, lr)
-results_file = '{}-{}-{}-{}-{}-{}-{}.txt'.format(num_hidden, ','.join([str(word) for word in sizes]), activation, 'softmax', loss, opt, lr)
+model_name = '{}-{}-{}-{}-{}-{}-{}-{}.npy'.format(num_hidden, ','.join([str(word) for word in sizes]), activation, 'softmax', batch_size, loss, opt, lr)
+results_file = '{}-{}-{}-{}-{}-{}-{}-{}.txt'.format(num_hidden, ','.join([str(word) for word in sizes]), activation, 'softmax', batch_size, loss, opt, lr)
 # Test
 network.load(path = os.path.join(model_path, model_name))
 predictions = network.predict(test_X)

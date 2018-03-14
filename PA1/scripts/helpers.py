@@ -8,6 +8,9 @@ def activation_function(x, activation = 'sigmoid'):
         return 1 / (1 + np.exp(-x))
     elif (activation == 'tanh'):
         return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+    elif activation == 'relu':
+        x[np.where(x < 0)] = 0.0
+        return x
     else:
         return x
 
@@ -23,7 +26,9 @@ def output_function(x, activation = 'softmax'):
 def loss_function(y_true, y_pred, loss = 'ce'):
     batch_size = y_true.shape[0]
     if loss == 'sq':
-        return (1./(2*batch_size)) * np.sum((y_true - y_pred)**2)
+        e_y = np.zeros_like(y_pred)
+        e_y[y_true, range(batch_size)] = 1
+        return (1.0 / (2.0 * batch_size)) * np.sum((e_y - y_pred)**2)
     if loss == 'ce':
         return (-1.0 / batch_size) * np.log(y_pred[y_true, range(batch_size)]).sum()
 
@@ -31,7 +36,7 @@ def loss_function(y_true, y_pred, loss = 'ce'):
 def setup_logger(name, log_file, level=logging.INFO):
     """Function setup as many loggers as you want"""
 
-    handler = logging.FileHandler(log_file)        
+    handler = logging.FileHandler(log_file, mode = 'w')        
     handler.setFormatter(formatter)
 
     logger = logging.getLogger(name)

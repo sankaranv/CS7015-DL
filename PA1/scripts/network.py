@@ -21,9 +21,7 @@ class Network:
             start = end
         num_params = end
         # Parameter vector - theta
-        #self.theta = np.random.randn(num_params)
         self.theta = np.random.uniform(-1.0, 1.0, num_params)
-        #self.theta = np.zeros((num_params))
         # Gradient vector - theta
         self.grad_theta = np.zeros_like(self.theta)
         # Map theta (grad_theta) to params (grad_params)
@@ -33,7 +31,6 @@ class Network:
             weight = 'W{}'.format(i)
             start, end = self.param_map[weight]
             self.params[weight] = self.theta[start : end].reshape((sizes[i], sizes[i - 1]))
-            #self.params[weight][:] = np.random.normal(0, 1, size = (sizes[i], sizes[i-1]))
             self.grad_params[weight] = self.grad_theta[start : end].reshape((sizes[i], sizes[i - 1]))
             bias = 'b{}'.format(i)
             start, end = self.param_map[bias]
@@ -65,7 +62,10 @@ class Network:
         # Compute output gradient
         e_y = np.zeros_like(y_pred)
         e_y[y_true, range(self.batch_size)] = 1
-        grad_activations['a{}'.format(self.L + 1)] = -(e_y - y_pred)
+        if self.loss_choice == 'ce':
+            grad_activations['a{}'.format(self.L + 1)] = -(e_y - y_pred)
+        elif self.loss_choice == 'sq':
+            grad_activations['a{}'.format(self.L + 1)] = -(e_y - y_pred) * y_pred * (1 - y_pred)
         for k in range (self.L + 1, 0, -1):
             # Gradients wrt parameters
             self.grad_params['W{}'.format(k)][:, :] = (1.0 / self.batch_size) * np.matmul(grad_activations['a{}'.format(k)], self.activations['h{}'.format(k-1)].T)
@@ -80,6 +80,9 @@ class Network:
                 grad_activation_ = np.multiply(self.activations['h{}'.format(k - 1)], 1 - self.activations['h{}'.format(k - 1)])
             elif self.activation_choice == 'tanh':
                 grad_activation_ = 1 - (self.activations['h{}'.format(k - 1)]) ** 2
+            elif self.activation_choice == 'relu':
+                grad_activation_ = np.zeros_like(self.activations['a{}'.format(k - 1)])
+                grad_activation_[np.where(self.activations['a{}'.format(k - 1)] > 0)] = 1.0
             grad_activations['a{}'.format(k-1)] = np.multiply(grad_activations['h{}'.format(k-1)], grad_activation_)
 
     def performance(self, y_true, y_pred):
