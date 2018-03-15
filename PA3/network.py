@@ -23,57 +23,57 @@ class CNN:
         self.arch = arch
         self.lr = lr
         # Initializers
-        if initializer='he':
+        if initializer=='he':
             init = tf.contrib.layers.variance_scaling_initializer()
         else:
             init = tf.contrib.layers.xavier_initializer()
         # Conv weights
         for i in range(len(conv_sizes)):
-            weight = 'Wc{}'.format(i)
+            weight = 'Wc{}'.format(i + 1)
             self.params[weight] = tf.get_variable(name = weight, shape = conv_sizes[i], initializer = init)
-            bias = 'bc{}'.format(i)
+            bias = 'bc{}'.format(i + 1)
             self.params[bias] = tf.get_variable(name = bias, shape = [conv_sizes[i][3]], initializer = init)
         # Dense weights
         for i in range(1,len(dense_sizes)):
             weight = 'Wd{}'.format(i)
-            self.params[weight] = tf.get_variable(name = weight, shape = [dense_sizes[i],dense_sizes[i-1]], initializer = init)
+            self.params[weight] = tf.get_variable(name = weight, shape = [dense_sizes[i - 1],dense_sizes[i]], initializer = init)
             bias = 'bd{}'.format(i)
-            self.params[bias] = tf.get_variable(name = weight, shape = [dense_sizes[i],1], initializer = init)
+            self.params[bias] = tf.get_variable(name = bias, shape = [dense_sizes[i]], initializer = init)
         # Output layer weight
-        self.params['Wout'] = tf.get_variable(name = 'Wout', shape = [num_out,dense_sizes[-1]], initializer = init)
-        self.params['bout'] = tf.get_variable(name = 'bout', shape = [num_out,1], initializer = init)
+        self.params['Wout'] = tf.get_variable(name = 'Wout', shape = [dense_sizes[-1], num_out], initializer = init)
+        self.params['bout'] = tf.get_variable(name = 'bout', shape = [num_out], initializer = init)
 
         # Build the TensorFlow graph
         self.sess = session
         self.build_graph()
 
     def build_graph(self):
-        x = tf.placeholder(tf.float32, shape=[None, 784], name='input_data')
-        y = tf.placeholder(tf.float32, shape=[None, 10], name='input_labels')
-        x = tf.reshape(x, shape=[-1, 28, 28, 1])
+        self.x = tf.placeholder(tf.float32, shape=[None, 784], name='input_data')
+        self.y = tf.placeholder(tf.float32, shape=[None, 10], name='input_labels')
+
         c_conv = 1
         c_dense = 1
         c_pool = 1
 
-        for i in range(len(arch)):
-            prev_layer_idx = ''
+        layer_idx = ''
+        prev_layer_idx = ''
+        for i in range(len(self.arch)):
+            
+            if self.arch[i] == 'input':
+                layer_idx = 'input'
+                self.layers[layer_idx] = tf.reshape(self.x, shape=[-1, 28, 28, 1])
 
-            if self.arch[i]=='conv':
+            elif self.arch[i]=='conv':
                 weight = 'Wc{}'.format(c_conv)
                 bias = 'bc{}'.format(c_conv)
                 layer_idx = 'conv{}'.format(c_conv)
-                if i == 0:
-                    self.layers[layer_idx] = conv2d(x, self.params[weight], self.params[bias])
-                else
-                    self.layers[layer_idx] = conv2d(self.layers[prev_layer_idx], self.params[weight], self.params[bias])
+                self.layers[layer_idx] = conv2d(self.layers[prev_layer_idx], self.params[weight], self.params[bias])
                 c_conv += 1
-                prev_layer_idx = layer_idx
 
             elif self.arch[i]=='pool':
                 layer_idx = 'pool{}'.format(c_pool)
                 self.layers[layer_idx] = pool2d(self.layers[prev_layer_idx])
                 c_pool += 1
-                prev_layer_idx = layer_idx
 
             elif self.arch[i]=='dense':
                 weight = 'Wd{}'.format(c_dense)
@@ -83,26 +83,39 @@ class CNN:
                 c_dense += 1
 
             elif self.arch[i]=='out':
-                logits = tf.add(tf.matmul(x, self.params['Wout']), self.params['bout'])
-                self.layers['out'] = logits
+                logits = tf.add(tf.matmul(self.layers[prev_layer_idx], self.params['Wout']), self.params['bout'])
+                layer_idx = 'out'
+                self.layers[layer_idx] = logits
                 y_pred =  tf.nn.softmax(logits)
-                loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
+                loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self.y))
 
             else:
                 print "Invalid architecture!"
                 sys.exit(1)
+            print 'Adding Layer-{} : {}, Shape = {}'.format((i + 1), self.arch[i], self.layers[layer_idx].get_shape())
 
-        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y))
-        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        train_op = optimizer.minimize(loss)
-        correct_pred = tf.equal(tf.argmax(y_pred, 1), tf.argmax(y, 1))
-        accuracy = tf.reduce_mean(correct_pred)
+            prev_layer_idx = layer_idx
+
+        self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self.y))
+        optimizer = tf.train.AdamOptimizer(learning_rate = self.lr)
+        self.train_op = optimizer.minimize(self.loss)
+        correct_pred = tf.equal(tf.argmax(y_pred, 1), tf.argmax(self.y, 1))
+        self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
         init = tf.global_variables_initializer()
         self.sess.run(init)
 
     def step(self, batch_x, batch_y):
-        sess.run(train_op, feed_dict={x: batch_x, y: batch_y})
+        self.sess.run(self.train_op, feed_dict = {self.x: batch_x, self.y: batch_y})
 
     def performance(self, batch_x, batch_y):
-        loss, acc = sess.run([loss_op, accuracy], feed_dict={x: batch_x, y: batch_y)
+        loss, acc = self.sess.run([self.loss, self.accuracy], feed_dict={self.x: batch_x, self.y: batch_y})
         return loss, acc
+
+    def save(self, save_path):
+        saver = tf.train.Saver()
+        saver.save(self.sess, save_path)
+
+    def load(self, load_path):
+        saver = tf.train.Saver()
+        saver.restore(self.sess, load_path)
+

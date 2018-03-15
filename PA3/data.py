@@ -5,13 +5,14 @@ import numpy as np
 def loadFromCSV(fname, is_test = False):
     lines = [line.strip().split(',') for line in open(fname, 'r').readlines()][1 : ]
     size = len(lines)
-    dim = 784
+    dim_X = 784
+    dim_Y = 10
     scale = 255.0
-    X, Y = np.zeros((size, dim), dtype = np.float32), np.zeros((size), dtype = np.int32)
+    X, Y = np.zeros((size, dim_X), dtype = np.float32), np.zeros((size, dim_Y), dtype = np.float32)
     for index, line in enumerate(lines):
         if is_test == False:
-            Y[index] = np.int32(line[-1])
-        X[index][:] = np.float32(line[1 : 1 + dim]) / scale
+            Y[index, np.int32(line[-1])] = 1.0
+        X[index][:] = np.float32(line[1 : 1 + dim_X]) / scale
     print 'Loaded data of shape', X.shape, Y.shape
     return X, Y
 
@@ -27,7 +28,7 @@ def loadData(train_path, valid_path, test_path):
     if os.path.isfile(os.path.join(data_path, 'train_X.npy')) == False:
         train_X, train_Y = loadFromCSV(train_path)
         valid_X, valid_Y = loadFromCSV(valid_path)
-        test_X, test_Y   = loadFromCSV(test_path)
+        test_X, test_Y   = loadFromCSV(test_path, is_test = True)
 
         data = {'train' : {'X' : train_X, 'Y' : train_Y},\
                 'valid' : {'X' : valid_X, 'Y' : valid_Y},\
@@ -55,8 +56,8 @@ def loadData(train_path, valid_path, test_path):
 
     # Load data, return transpose, shape of returned array is (dimension, num_points) : each column is a data-point
     for stage in stages:
-        data[stage]['X'] = np.load(os.path.join(data_path, '{}_X.npy'.format(stage))).T
-        data[stage]['Y'] = np.load(os.path.join(data_path, '{}_Y.npy'.format(stage))).T
+        data[stage]['X'] = np.load(os.path.join(data_path, '{}_X.npy'.format(stage)))
+        data[stage]['Y'] = np.load(os.path.join(data_path, '{}_Y.npy'.format(stage)))
 
     print 'Loaded train-val-test data'
 
