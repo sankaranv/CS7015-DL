@@ -23,8 +23,7 @@ class CNN:
         self.arch = arch
         self.lr = lr
         # Initializers
-        if initializer=='he':def parse_arch():
-    pass
+        if initializer=='he':
             init = tf.contrib.layers.variance_scaling_initializer()
         else:
             init = tf.contrib.layers.xavier_initializer()
@@ -101,7 +100,10 @@ class CNN:
         correct_pred = tf.equal(tf.argmax(y_pred, 1), tf.argmax(self.y, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
         init = tf.global_variables_initializer()
-
+        # TensorBoard summaries
+        tf.summary.scalar("loss", self.loss)
+        tf.summary.scalar("accuracy", self.accuracy)
+        merged_summary_op = tf.summary.merge_all()
         self.sess.run(init)
 
     def step(self, batch_x, batch_y):
