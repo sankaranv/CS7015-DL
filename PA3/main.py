@@ -24,9 +24,6 @@ parser.add_argument('--save_dir', default='./models',
                     help='path to save model')
 args = parser.parse_args()
 
-def parse_arch():
-    pass
-
 # Load data
 train_path, valid_path, test_path = args.train, args.val, args.test
 logs_path = args.expt_dir
@@ -46,7 +43,8 @@ num_epochs = 100
 batch_size = 20
 num_batches = int(float(train_X.shape[0]) / batch_size)
 steps = 0
-
+patience = 5
+early_stop=0
 # Load architecture
 arch = loadArch('models/cnn.json')
 
@@ -71,5 +69,10 @@ with tf.Graph().as_default(), tf.Session() as session:
                 valid_log.info('Epoch {}, Step {}, Loss: {}, Accuracy: {}, lr: {}'.format(epoch, steps, valid_loss, valid_acc, model.lr))
                 if valid_loss < min(loss_history):
                     model.save(os.path.join(model_path, model_name))
+                    early_stop = 0
+                early_stop += 1
+                if (early_stop >= patience):
+                    print "No improvement in validation loss for " + str(patience) + " steps - stopping training!"
+                    break
                 loss_history.append(valid_loss)
     print("Optimization Finished!")

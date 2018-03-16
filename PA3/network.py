@@ -23,7 +23,8 @@ class CNN:
         self.arch = arch
         self.lr = lr
         # Initializers
-        if initializer=='he':
+        if initializer=='he':def parse_arch():
+    pass
             init = tf.contrib.layers.variance_scaling_initializer()
         else:
             init = tf.contrib.layers.xavier_initializer()
@@ -39,7 +40,7 @@ class CNN:
                 bias = params['bias']['name']
                 shape = params['bias']['shape']
                 self.params[bias] = tf.get_variable(name = bias, shape = shape, initializer = init)
-            
+
         # Build the TensorFlow graph
         self.sess = session
         self.build_graph()
@@ -55,7 +56,7 @@ class CNN:
                 params = item['params']
                 weight = params['weight']['name']
                 bias = params['bias']['name']
-            
+
             if 'input' in layer:
                 self.layers[layer] = tf.reshape(self.x, shape=[-1, 28, 28, 1])
 
@@ -69,6 +70,13 @@ class CNN:
 
             elif 'reshape' in layer:
                 continue
+
+            elif 'dropout' in layer:
+                prob = item['prob']
+                self.layers[layer] = tf.nn.dropout(self.layers[prev_layer], keep_prob=prob)
+
+            elif 'batchnorm' in layer:
+                self.layers[layer] = tf.contrib.layers.batch_norm(self.layers[prev_layer])
 
             elif 'fc' in layer:
                 self.layers[layer] = dense(self.layers[prev_layer], self.params[weight], self.params[bias])
@@ -93,6 +101,7 @@ class CNN:
         correct_pred = tf.equal(tf.argmax(y_pred, 1), tf.argmax(self.y, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
         init = tf.global_variables_initializer()
+
         self.sess.run(init)
 
     def step(self, batch_x, batch_y):
@@ -109,4 +118,3 @@ class CNN:
     def load(self, load_path):
         saver = tf.train.Saver()
         saver.restore(self.sess, load_path)
-
