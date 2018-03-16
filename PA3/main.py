@@ -50,7 +50,7 @@ arch = loadArch('models/cnn.json')
 
 model_name = 'cnn'
 with tf.Graph().as_default(), tf.Session() as session:
-    model = CNN(arch, session)
+    model = CNN(arch, session, logs_path)
     loss_history = [np.inf]
     for epoch in range(num_epochs):
         steps = 0
@@ -60,12 +60,13 @@ with tf.Graph().as_default(), tf.Session() as session:
         for batch in range(num_batches):
             start, end = batch * batch_size, (batch + 1) * batch_size
             x, y = train_X[range(start, end)], train_Y[range(start, end)]
+            idx = epoch*num_batches + batch
             model.step(x,y)
             steps += batch_size
             if steps % train_X.shape[0] == 0 and steps != 0:
-                train_loss, train_acc = model.performance(train_X, train_Y)
+                train_loss, train_acc = model.performance(train_X, train_Y, idx)
                 train_log.info('Epoch {}, Step {}, Loss: {}, Accuracy: {}, lr: {}'.format(epoch, steps, train_loss, train_acc, model.lr))
-                valid_loss, valid_acc = model.performance(valid_X,valid_Y)
+                valid_loss, valid_acc = model.performance(valid_X, valid_Y, idx)
                 valid_log.info('Epoch {}, Step {}, Loss: {}, Accuracy: {}, lr: {}'.format(epoch, steps, valid_loss, valid_acc, model.lr))
                 if valid_loss < min(loss_history):
                     model.save(os.path.join(model_path, model_name))

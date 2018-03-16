@@ -17,11 +17,12 @@ def dense(x, W, b):
 
 class CNN:
 
-    def __init__(self, arch, session, initializer='xavier', lr = 0.001):
+    def __init__(self, arch, session, logs_path, initializer='xavier', lr = 0.001):
         self.params = {}
         self.layers = {}
         self.arch = arch
         self.lr = lr
+        self.logs_path = logs_path
         # Initializers
         if initializer=='he':
             init = tf.contrib.layers.variance_scaling_initializer()
@@ -103,14 +104,16 @@ class CNN:
         # TensorBoard summaries
         tf.summary.scalar("loss", self.loss)
         tf.summary.scalar("accuracy", self.accuracy)
-        merged_summary_op = tf.summary.merge_all()
+        self.summary_op = tf.summary.merge_all()
         self.sess.run(init)
+        self.summary_writer = tf.summary.FileWriter(self.logs_path, graph=tf.get_default_graph())
 
     def step(self, batch_x, batch_y):
         self.sess.run(self.train_op, feed_dict = {self.x: batch_x, self.y: batch_y})
 
-    def performance(self, batch_x, batch_y):
-        loss, acc = self.sess.run([self.loss, self.accuracy], feed_dict={self.x: batch_x, self.y: batch_y})
+    def performance(self, batch_x, batch_y, idx):
+        loss, acc, summary = self.sess.run([self.loss, self.accuracy, self.summary_op], feed_dict={self.x: batch_x, self.y: batch_y})
+        self.summary_writer.add_summary(summary, idx)
         return loss, acc
 
     def save(self, save_path):
