@@ -8,8 +8,7 @@ import tensorflow as tf
 
 from data import loadData
 from network import CNN
-
-
+from modelparser import loadArch
 
 # Parse args
 parser = argparse.ArgumentParser(description='Train the MLP')
@@ -48,13 +47,12 @@ batch_size = 20
 num_batches = int(float(train_X.shape[0]) / batch_size)
 steps = 0
 
-conv_sizes = [(3, 3, 1, 32), (3, 3, 32, 64)]
-dense_sizes = [7 * 7 * 64, 1024, 512]
-num_out = 10
-arch = ['input', 'conv', 'pool', 'conv', 'pool', 'dense', 'dense', 'out']
+# Load architecture
+arch = loadArch('models/cnn.json')
+
 model_name = 'cnn'
 with tf.Graph().as_default(), tf.Session() as session:
-    model = CNN(conv_sizes, dense_sizes, num_out, arch, session)
+    model = CNN(arch, session)
     loss_history = [np.inf]
     for epoch in range(num_epochs):
         steps = 0
