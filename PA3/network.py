@@ -1,14 +1,14 @@
 import tensorflow as tf
 import sys
 
-def conv2d(x, W, b, strides=1):
-    x = tf.nn.conv2d(x, W, strides = [1, strides, strides, 1], padding='SAME')
+def conv2d(x, W, b, strides=1, padding = 'SAME'):
+    x = tf.nn.conv2d(x, W, strides = [1, strides, strides, 1], padding = padding)
     x = tf.nn.bias_add(x, b)
     return tf.nn.relu(x)
 
-def pool2d(x, k = 2):
-    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
-                          padding='SAME')
+def pool2d(x, filter_size, stride = 2, padding = 'SAME'):
+    return tf.nn.max_pool(x, ksize=[1, filter_size, filter_size, 1], strides=[1, stride, stride, 1],
+                          padding = padding)
 
 def dense(x, W, b):
     fc = tf.reshape(x, [-1, W.get_shape().as_list()[0]])
@@ -17,14 +17,16 @@ def dense(x, W, b):
 
 class CNN:
 
-    def __init__(self, arch, session, logs_path, initializer='xavier', lr = 0.001):
+    def __init__(self, arch, session, logs_path, initializer = 1, lr = 0.001, quiet = True):
         self.params = {}
         self.layers = {}
         self.arch = arch
         self.lr = lr
         self.logs_path = logs_path
+        self.quiet = quiet
         # Initializers
-        if initializer=='he':
+        # He 
+        if initializer == 2:
             init = tf.contrib.layers.variance_scaling_initializer()
         else:
             init = tf.contrib.layers.xavier_initializer()
@@ -62,11 +64,12 @@ class CNN:
 
             elif 'conv' in layer:
                 padding, stride = item['padding'], item['stride']
-                self.layers[layer] = conv2d(self.layers[prev_layer], self.params[weight], self.params[bias], stride)
+                self.layers[layer] = conv2d(self.layers[prev_layer], self.params[weight], self.params[bias], stride, padding)
 
             elif 'pool' in layer:
+                filter_size = item['filter_size']
                 padding, stride = item['padding'], item['stride']
-                self.layers[layer] = pool2d(self.layers[prev_layer])
+                self.layers[layer] = pool2d(self.layers[prev_layer], filter_size, stride, padding)
 
             elif 'reshape' in layer:
                 continue
@@ -102,18 +105,27 @@ class CNN:
         self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
         init = tf.global_variables_initializer()
         # TensorBoard summaries
-        tf.summary.scalar("loss", self.loss)
-        tf.summary.scalar("accuracy", self.accuracy)
-        self.summary_op = tf.summary.merge_all()
+        self.train_loss = tf.summary.scalar("train_loss", self.loss)
+        self.valid_loss = tf.summary.scalar("valid_loss", self.loss)
+        self.train_acc = tf.summary.scalar("train_accuracy", self.accuracy)
+        self.valid_acc = tf.summary.scalar("valid_accuracy", self.accuracy)
         self.sess.run(init)
-        self.summary_writer = tf.summary.FileWriter(self.logs_path, graph=tf.get_default_graph())
+        if not self.quiet:
+            self.summary_writer = tf.summary.FileWriter(self.logs_path, graph=tf.get_default_graph())
 
     def step(self, batch_x, batch_y):
         self.sess.run(self.train_op, feed_dict = {self.x: batch_x, self.y: batch_y})
 
-    def performance(self, batch_x, batch_y, idx):
-        loss, acc, summary = self.sess.run([self.loss, self.accuracy, self.summary_op], feed_dict={self.x: batch_x, self.y: batch_y})
-        self.summary_writer.add_summary(summary, idx)
+    def performance(self, batch_x, batch_y, is_train, idx):
+        if is_train == True:
+            loss, acc, loss_summary, accuracy_summary = self.sess.run([self.loss, self.accuracy, self.train_loss, self.train_acc],
+                                                                       feed_dict={self.x: batch_x, self.y: batch_y})
+        else:
+            loss, acc, loss_summary, accuracy_summary = self.sess.run([self.loss, self.accuracy, self.valid_loss, self.valid_acc],
+                                                                       feed_dict={self.x: batch_x, self.y: batch_y})
+        if not self.quiet:
+            self.summary_writer.add_summary(loss_summary, idx)
+            self.summary_writer.add_summary(accuracy_summary, idx)
         return loss, acc
 
     def save(self, save_path):

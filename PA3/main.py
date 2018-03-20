@@ -1,4 +1,5 @@
 import sys, os
+import shutil
 import resource
 import argparse
 import logging
@@ -49,43 +50,58 @@ def train():
                         help='path to test set')
     parser.add_argument('--save_dir', default='./models',
                         help='path to save model')
+    parser.add_argument('--arch', default='models/cnn.json',
+                        help = 'path to model architecture')
+    parser.add_argument('--model_name', default = 'model',
+                        help = 'name of the model to save logs, weights')
+    parser.add_argument('--lr', default = 0.001,
+                        help = 'learning rate')
+    parser.add_argument('--init', default = '1',
+                        help = 'initialization')
+    parser.add_argument('--batch_size', default = 20,
+                        help = 'batch_size')
     args = parser.parse_args()
 
     # Load data
     train_path, valid_path, test_path = args.train, args.val, args.test
     logs_path = args.expt_dir
-    model_path = args.save_dir
+    model_path, model_arch, model_name = args.save_dir, args.arch, args.model_name
+    lr, batch_size, init = float(args.lr), int(args.batch_size), int(args.init)
+
     data = loadData(train_path, valid_path, test_path)
     train_X, train_Y, valid_X, valid_Y, test_X, test_Y = data['train']['X'], data['train']['Y'],\
                                                          data['valid']['X'], data['valid']['Y'],\
                                                          data['test']['X'], data['test']['Y'],
+
+    # Load architecture
+    arch = loadArch(model_arch)
+
     # Logging
-    train_log_name = 'train.log'
-    valid_log_name = 'valid.log'
+    train_log_name = '{}.train.log'.format(model_name)
+    valid_log_name = '{}.valid.log'.format(model_name)
     train_log = setup_logger('train-log', os.path.join(logs_path, train_log_name))
     valid_log = setup_logger('valid-log', os.path.join(logs_path, valid_log_name))
 
+    # GPU config
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.2)
+
     # Train
-    num_epochs = 100
-    batch_size = 20
+    num_epochs = 20
     num_batches = int(float(train_X.shape[0]) / batch_size)
     steps = 0
     patience = 5
     early_stop=0
-    # Load architecture
-    arch = loadArch('models/cnn.json')
-            
-    model_name = 'cnn'
-    with tf.Graph().as_default(), tf.Session() as session:
-        model = CNN(arch, session, logs_path)
+
+    with tf.Session(config = tf.ConfigProto(gpu_options=gpu_options)) as session:
+        model = CNN(arch, session, logs_path, init, lr)
         loss_history = [np.inf]
         for epoch in range(num_epochs):
+            print 'Epoch {}'.format(epoch)
             steps = 0
             indices = np.arange(train_X.shape[0])
             np.random.shuffle(indices)
             train_X, train_Y = train_X[indices], train_Y[indices]
             for batch in range(num_batches):
-                print 'Epoch {}, batch {}'.format(epoch, batch)
                 start, end = batch * batch_size, (batch + 1) * batch_size
                 x, y = train_X[range(start, end)], train_Y[range(start, end)]
                 try:
@@ -113,7 +129,8 @@ def train():
                     early_stop += 1
                     if (early_stop >= patience):
                         print "No improvement in validation loss for " + str(patience) + " steps - stopping training!"
-                        break
+                        print("Optimization Finished!")
+                        return 1
                     loss_history.append(valid_loss)
         print("Optimization Finished!")
 
