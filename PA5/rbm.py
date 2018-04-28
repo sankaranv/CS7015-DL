@@ -20,15 +20,15 @@ class RBM:
 	def contrastive_divergence(self, k, V):
 		
 		#Positive Sample
-		pos_H = gibbs_sample(mode = 'V', init_V = V)
+		pos_H = block_gibbs_sample(mode = 'V', init_V = V)
 		pos_V = V
 
 		#Negative Sample
 		neg_V = np.copy(V)
 		for i in range(k):
-			neg_H=gibbs_sample(mode = 'V', init_V = neg_V)
-			neg_V=gibbs_sample(mode = 'H', init_H = neg_H)	
-		neg_H=gibbs_sample(mode = 'V', init_V = neg_V)
+			neg_H=block_gibbs_sample(mode = 'V', init_V = neg_V)
+			neg_V=block_gibbs_sample(mode = 'H', init_H = neg_H)	
+		neg_H=block_gibbs_sample(mode = 'V', init_V = neg_V)
 
 		self.W += self.lr * np.dot(pos_H, pos_V.T)
 		self.W -= self.lr * np.dot(neg_H, neg_V.T) 
