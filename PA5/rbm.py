@@ -36,6 +36,8 @@ class RBM:
 		self.b -= self.lr * neg_V
 		self.c += self.lr * pos_H
 		self.c -= self.lr * neg_H
+	
+	def block_gibbs_sample(self):
 
 
 
