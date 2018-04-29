@@ -1,9 +1,10 @@
 import numpy as np
 import h5py
+from sklearn.manifold import TSNE
+from matplotlib import pyplot as plt
 from data import loadData
 
 def sigmoid(x):
-    #print 1.0 / (1.0 + np.exp(-x))
     return 1.0 / (1.0 + np.exp(-x))
 
 class RBM:
@@ -78,14 +79,50 @@ class RBM:
             self.b = f['b'][:]
             self.c = f['c'][:]
 
+    def saveEmbeddings(self, data, labels, save_path):
+        embedding = self.block_gibbs_sample_HgivenV(data)
+        with h5py.File(save_path, 'w') as f:
+            f.create_dataset(data = embedding, name = 'h', shape = embedding.shape, dtype = embedding.dtype)
+            f.create_dataset(data = labels, name = 'l', shape = labels.shape, dtype = labels.dtype)
+        return embedding
+
+    def loadEmbeddings(self, load_path):
+        with h5py.File(load_path, 'r') as f:
+            embeddings = f['h'][:]
+            labels = f['l'][:]
+        return embeddings, labels
+
+def plotTSNE(data, save_path):
+    embeddings, labels = data
+    tsne_embed = TSNE(n_components = 2).fit_transform(embeddings[:1000])
+    plt.scatter(tsne_embed[:, 0], tsne_embed[:, 1])
+    plt.savefig(save_path)
+
 if __name__ == '__main__':
-    train_data = loadData('data/train.csv', 'data/val.csv', 'data/test.csv')['train']['X']
-    rbm = RBM(784, 100)
+    MODE = 'VIZ'
+    data = loadData('data/train.csv', 'data/val.csv', 'data/test.csv')
+
+    train_data = data['train']['X']
+    test_data, labels = data['test']['X'], data['test']['Y']
     # Hyperparams
-    k = 1
-    batch_size = 50
-    lr = 0.1
-    epochs = 20
-    save_path = '{}-{}-{}'.format(k, batch_size, epochs)
-    rbm.train_contrastive_divergence(train_data, k = k, batch_size = batch_size, lr = lr, epochs = epochs,\
+    k = 5
+    batch_size = 20
+    lr = 1.0
+    epochs = 10
+    hidden_size = 100
+    visible_size = train_data.shape[1]
+
+    rbm = RBM(visible_size, hidden_size)
+
+    if 'TRAIN' in MODE:
+        save_path = 'models\\{}-{}-{}-{}.h5'.format(hidden_size, k, batch_size, epochs)
+        rbm.train_contrastive_divergence(train_data, k = k, batch_size = batch_size, lr = lr, epochs = epochs,\
                                      save_path = save_path)
+    if 'TEST' in MODE:
+        load_path = 'models\\{}-{}-{}-{}.h5'.format(hidden_size, k, batch_size, epochs)
+        rbm.loadModel(load_path)
+        rbm.saveEmbeddings(test_data, labels, 'embeddings\\{}-{}-{}-{}.h5'.format(hidden_size, k, batch_size, epochs))
+
+    if 'VIZ' in MODE:
+        data = rbm.loadEmbeddings('embeddings\\{}-{}-{}-{}.h5'.format(hidden_size, k, batch_size, epochs))
+        plotTSNE(data, 'plots\\{}-{}-{}-{}.jpg'.format(hidden_size, k, batch_size, epochs))
