@@ -16,8 +16,7 @@ class RBM:
 
 		#Weights and Biases
 		#Refer Hinton's practical guide to training RBMs
-        #self.W = np.random.normal(0.0, 0.001, (num_V,num_H))
-        self.W = np.zeros((num_V, num_H))
+        self.W = np.random.normal(0.0, 0.001, (num_V,num_H))
         self.b = np.zeros((1, num_V))
         self.c = np.zeros((1, num_H))
 
@@ -31,7 +30,7 @@ class RBM:
         return sample_V
 
     def block_gibbs_sample_HgivenV(self, init_V):
-        # Probability of H being 1
+        # Probability of H being 1 given V
         expected_H = sigmoid(np.dot(init_V, self.W) + self.c)
 		#Bernoulli Sampling
         batch_size, size = expected_H.shape
@@ -57,13 +56,14 @@ class RBM:
                 self.W += 1.0 / batch_size * lr * grad_W
                 self.b += 1.0 / batch_size * lr * grad_b
                 self.c += 1.0 / batch_size * lr * grad_c
+
             H_model = self.block_gibbs_sample_HgivenV(data)
             V_model = self.block_gibbs_sample_VgivenH(H_model)
             loss = 1.0 / data.shape[0] * np.power((V_model - data), 2).sum()
             if loss < np.min(loss_history):
                 self.saveModel(save_path)
             else:
-                lr *= 0.5
+                lr *= 1.0
             loss_history.append(loss)
             print 'Epoch {}: {}'.format(epoch + 1, loss)
 
@@ -94,22 +94,39 @@ class RBM:
 
 def plotTSNE(data, save_path):
     embeddings, labels = data
-    tsne_embed = TSNE(n_components = 2).fit_transform(embeddings[:1000])
-    plt.scatter(tsne_embed[:, 0], tsne_embed[:, 1])
+    colors = np.array(['green', 'violet', 'yellow', 'blue', 'black', 'purple', 'violet', 'pink', 'orange', 'cyan'])
+    markers = np.array(['T-shirt', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle-boot'])
+    tsne_embed = TSNE(n_components = 2, learning_rate = 10.0, n_iter = 1000, init = 'pca').fit_transform(embeddings)
+    data = dict()
+    fig = plt.figure(0)
+    ax = fig.gca()
+    ax.set_xlim([-40, 50])
+    ax.set_ylim([-40, 40])
+    ax.set_title('TSNE embeddings')
+    for i in range(tsne_embed.shape[0]):
+        if labels[i] not in data.keys():
+            data[labels[i]] = []
+        data[labels[i]].append(tsne_embed[i, :])
+    for label in range(10):
+        data[label] = np.stack(data[label], axis = 0)
+        x, y = data[label][:, 0], data[label][:, 1]
+        ax.scatter(x, y, color = colors[label], label = markers[label], s = 1.0)
+    ax.legend()
     plt.savefig(save_path)
 
 if __name__ == '__main__':
-    MODE = 'VIZ'
+    MODE = 'TRAIN,VIZ,TEST'
     data = loadData('data/train.csv', 'data/val.csv', 'data/test.csv')
 
     train_data = data['train']['X']
     test_data, labels = data['test']['X'], data['test']['Y']
+
     # Hyperparams
-    k = 5
-    batch_size = 20
-    lr = 1.0
+    k = 1
+    batch_size = 1
+    lr = 0.01
     epochs = 10
-    hidden_size = 100
+    hidden_size = 300
     visible_size = train_data.shape[1]
 
     rbm = RBM(visible_size, hidden_size)

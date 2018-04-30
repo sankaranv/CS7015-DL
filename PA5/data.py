@@ -12,6 +12,10 @@ def loadFromCSV(fname, is_test = False):
         if is_test == False:
             Y[index] = np.int32(line[-1])
         X[index][:] = np.float32([0 if float(pixel) < 127 else 1 for pixel in line[1 : 1 + dim]])
+    if is_test == True:
+        with open('data\\test_labels.csv', 'r') as f:
+            Y = np.int32([int(line.strip().split(',')[1]) for line in f.readlines()[1:]])
+            print Y
     print 'Loaded data of shape', X.shape, Y.shape
     return X, Y
 
@@ -22,7 +26,7 @@ def loadData(train_path, valid_path, test_path):
     if os.path.isfile(os.path.join(data_path, 'train_X.npy')) == False:
         train_X, train_Y = loadFromCSV(train_path)
         valid_X, valid_Y = loadFromCSV(valid_path)
-        test_X, test_Y   = loadFromCSV(test_path)
+        test_X, test_Y   = loadFromCSV(test_path, is_test = True)
 
         data = {'train' : {'X' : np.concatenate([train_X, valid_X], axis = 0), 'Y' : np.concatenate([train_Y, valid_Y], axis = 0)},\
                 'test'  : {'X' : test_X, 'Y'  : test_Y}}
